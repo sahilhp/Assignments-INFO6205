@@ -2,6 +2,7 @@ package edu.neu.coe.info6205.sort.par;
 
 import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ForkJoinPool;
 
 /**
  * This code has been fleshed out by Ziyao Qiao. Thanks very much.
@@ -9,6 +10,7 @@ import java.util.concurrent.CompletableFuture;
  */
 class ParSort {
 
+    public static ForkJoinPool pool = null;
     public static int cutoff = 1000;
 
     public static void sort(int[] array, int from, int to) {
@@ -36,13 +38,29 @@ class ParSort {
                 return result;
             });
 
-            parsort.whenComplete((result, throwable) -> System.arraycopy(result, 0, array, from, result.length));
+//            parsort.whenComplete((result, throwable) -> System.arraycopy(result, 0, array, from, result.length));
 //            System.out.println("# threads: "+ ForkJoinPool.commonPool().getRunningThreadCount());
+            parsort.whenComplete((result, throwable) -> {System.arraycopy(result, 0, array, from, result.length);
+//                System.out.println("when complete " + Thread.currentThread().getName());
+            });
+//            System.out.println("# threads:"  + ForkJoinPool.commonPool().getRunningThreadCount());
             parsort.join();
         }
     }
 
     private static CompletableFuture<int[]> parsort(int[] array, int from, int to) {
+        if (pool == null) {
+            return CompletableFuture.supplyAsync(
+                    () -> {
+                        int[] result = new int[to - from];
+//                    System.out.println("supplyAsync " + Thread.currentThread().getName());
+                        System.arraycopy(array, from, result, 0, result.length);
+                        sort(result, 0, to - from);
+                        return result;
+                    }
+            );
+        }
+
         return CompletableFuture.supplyAsync(
                 () -> {
                     int[] result = new int[to - from];
@@ -50,7 +68,7 @@ class ParSort {
                     System.arraycopy(array, from, result, 0, result.length);
                     sort(result, 0, to - from);
                     return result;
-                }
+                },pool
         );
     }
 }
